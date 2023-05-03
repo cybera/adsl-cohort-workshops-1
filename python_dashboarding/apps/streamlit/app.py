@@ -1,138 +1,146 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.express as px
+
+# Function to load the dataset
+def load_data(url):
+    data = pd.read_csv(url)
+    return data
 
 
-def udpate_plot(
-    df_country_indicators, xaxis, xaxis_type, yaxis, yaxis_type, year, country_color
-):
-    df_widget = df_country_indicators[(df_country_indicators["Year"] == year)]
+# Page 1: Display the dataset
+def display_data_page(data):
+    st.header("Country Indicators Dataset")
 
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            mode="markers",
-            x=df_widget[
-                (df_widget["Indicator Name"] == xaxis)
-                & (~df_widget["Country Name"].isin(country_color))
-            ]["Value"],
-            y=df_widget[
-                (df_widget["Indicator Name"] == yaxis)
-                & (~df_widget["Country Name"].isin(country_color))
-            ]["Value"],
-            marker=dict(
-                color="dimgrey", opacity=0.75, line=dict(color="darkgrey", width=1)
-            ),
-            showlegend=False,
-            hoverinfo="text",
-            hovertext=df_widget[
-                (df_widget["Indicator Name"] == xaxis)
-                & (~df_widget["Country Name"].isin(country_color))
-            ]["Country Name"],
-        )
-    )
+    st.subheader("Dataset using st.write()")
+    st.write("st.write() displays the dataset in an interactive table format, which allows you to scroll, search, and sort columns.")
+    st.write(data)
 
-    fig.add_trace(
-        go.Scatter(
-            mode="markers",
-            marker_symbol="hexagram",
-            x=df_widget[
-                (df_widget["Indicator Name"] == xaxis)
-                & (df_widget["Country Name"].isin(country_color))
-            ]["Value"],
-            y=df_widget[
-                (df_widget["Indicator Name"] == yaxis)
-                & (df_widget["Country Name"].isin(country_color))
-            ]["Value"],
-            marker=dict(
-                color="palevioletred", size=10, line=dict(color="darkred", width=1)
-            ),
-            showlegend=False,
-            hoverinfo="text",
-            hovertext=df_widget[
-                (df_widget["Indicator Name"] == xaxis)
-                & (df_widget["Country Name"].isin(country_color))
-            ]["Country Name"],
-        )
-    )
+    st.subheader("Dataset using st.dataframe() \n Documents: https://docs.streamlit.io/library/api-reference/data/st.dataframe")
+    st.write("st.dataframe() also displays the dataset in an interactive table format, similar to st.write(). However, it offers more customization options, such as width and height.")
+    st.dataframe(data, width=900, height=300)
 
-    fig.update_xaxes(title=xaxis + " [" + xaxis_type + "]", type=xaxis_type)
-    fig.update_yaxes(title=yaxis + " [" + yaxis_type + "]", type=yaxis_type)
-    fig.update_layout(
-        width=750,
-        height=500,
-        title="Country Indicators - " + str(year),
-        paper_bgcolor="rgb(0,0,0,0)",
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Dataset using st.table() \n Documents:https://docs.streamlit.io/library/api-reference/data/st.table")
+    st.write("st.table() displays the dataset in a static table format. It has a cleaner look, but does not offer interactivity like scrolling, searching, or sorting.")
+    st.table(data.head(10))
 
-    st.markdown(
-        "- Source: [Plolty dataset](https://github.com/plotly/datasets/blob/master/country_indicators.csv)"
-    )
+# Page 2: Create and display the plot
+def plot_page(data):
+    def plot_indicator(data, selected_countries, selected_indicator, year_range):
+        filtered_data = data[(data['Country Name'].isin(selected_countries)) &
+                            (data['Indicator Name'] == selected_indicator) &
+                            (data['Year'].between(year_range[0], year_range[1]))]
 
+        fig = px.line(filtered_data, x='Year', y='Value', color='Country Name',
+                    title=f"{selected_indicator} for {', '.join(selected_countries)} over time")
 
+        return fig
+
+    st.header("Interactive Visualization")
+    st.subheader("Select countries, indicator, and year range to plot over time")
+    all_countries = data['Country Name'].unique()
+    all_indicators = data['Indicator Name'].unique()
+
+    selected_countries = st.multiselect("Choose countries", options=all_countries, default=['United States', 'China'])
+    selected_indicator = st.selectbox("Choose indicator", options=all_indicators, index=0)
+
+    min_year, max_year = int(data['Year'].min()), int(data['Year'].max())
+    year_range = st.slider("Choose year range", min_value=min_year, max_value=max_year, value=(min_year, max_year))
+
+    if selected_countries:
+        fig = plot_indicator(data, selected_countries, selected_indicator, year_range)
+        st.plotly_chart(fig)
+    else:
+        st.write("No countries selected. Please select at least one country to plot the selected indicator over time.")
+# Page 3: Layout Examples
+def layout_examples_page():
+    st.header("Streamlit Layout Examples \n Document: https://docs.streamlit.io/library/api-reference/layout")
+
+    st.subheader("Columns")
+    st.write("You can create columns in Streamlit using `st.columns()`. This allows you to arrange widgets or content side by side.")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Column 1")
+        st.button("Button 1")
+    with col2:
+        st.write("Column 2")
+        st.button("Button 2")
+    with col3:
+        st.write("Column 3")
+        st.button("Button 3")
+
+    st.subheader("Expander")
+    st.write("You can create expanders in Streamlit using `st.xpander()`. This allows you to show or hide content in a collapsible section.")
+    
+    with st.expander("Expandable Section"):
+        st.write("This is an expandable section.")
+        st.button("Button inside Expander")
+
+    st.subheader("Container")
+    st.write("You can create containers in Streamlit using `st.container()`. This allows you to group and organize content or widgets.")
+    
+    
+    with st.container():
+        st.write("This is a container.")
+        st.button("Button inside Container")
+    st.write('This is outside a container')
+    # Page 4: Styling Examples
+def styling_examples_page():
+    # Add custom CSS styles
+    st.markdown("""
+    <style>
+        .custom-header {
+            color: #4a148c;
+            font-weight: bold;
+        }
+        .custom-text {
+            color: #388e3c;
+            font-style: italic;
+        }
+        .custom-button button {
+            background-color: #ff9800;
+            border: 2px solid #f57c00;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+        .custom-button:hover button {
+            background-color: #f57c00;
+            border-color: #ff9800;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h1 class='custom-header'>Custom Styled Header</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='custom-text'>This is custom styled text.</p>", unsafe_allow_html=True)
+    
+    st.markdown("<div class='custom-button'>", unsafe_allow_html=True)
+    st.button("Custom Styled Button")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
 def main():
-    st.title("Key Indicators")
+    # Read in the dataset
+    DATA_URL = "https://raw.githubusercontent.com/plotly/datasets/master/country_indicators.csv"
+    data = load_data(DATA_URL)
 
-    df_country_indicators = pd.read_csv(
-        "https://plotly.github.io/datasets/country_indicators.csv"
-    )
-    all_axis_options = list(df_country_indicators["Indicator Name"].unique())
+    # Define pages and their corresponding functions
+    pages = {
+        "Display Data": display_data_page,
+        "Plot Data": plot_page,
+        "Layout Examples": layout_examples_page,
+        "Styling Examples": styling_examples_page
+    }
 
-    col1, col2 = st.columns([3, 1])
-    # xaxis widget
-    xaxis_widget = col1.selectbox(
-        options=all_axis_options,
-        index=all_axis_options.index("Industry, value added (% of GDP)"),
-        label="Xaxis :",
-    )
+    # Show a selection box in the sidebar to choose a page
+    st.sidebar.title("Navigation")
+    selected_page = st.sidebar.radio("Go to", list(pages.keys()))
 
-    xaxis_type_widget = col2.radio(options=["linear", "log"], index=1, label="")
-
-    # xaxis widget
-    yaxis_widget = col1.selectbox(
-        options=all_axis_options,
-        index=all_axis_options.index("Services, etc., value added (% of GDP)"),
-        label="Yaxis :",
-    )
-
-    yaxis_type_widget = col2.radio(options=["linear", "log"], index=0, label="")
-
-    col1_a, col2_a = st.columns([1, 3])
-
-    year_slider_widget = col1_a.slider(
-        label="Year: ",
-        value=2007,
-        min_value=int(df_country_indicators["Year"].min()),
-        max_value=int(df_country_indicators["Year"].max()),
-        step=5,
-    )
-
-    country_color_widget = col2_a.multiselect(
-        options=df_country_indicators["Country Name"].unique(),
-        default=[
-            "Canada",
-            "United States",
-            "Mexico",
-            "India",
-            "China",
-            "United Kingdom",
-            "Norway",
-            "Germany",
-        ],
-        label="Color: ",
-    )
-
-    udpate_plot(
-        df_country_indicators,
-        xaxis_widget,
-        xaxis_type_widget,
-        yaxis_widget,
-        yaxis_type_widget,
-        year_slider_widget,
-        country_color_widget,
-    )
-
+    # Call the corresponding function for the selected page
+    if selected_page in ["Display Data", "Plot Data"]:
+        pages[selected_page](data)
+    else:
+        pages[selected_page]()
 
 if __name__ == "__main__":
     main()
